@@ -41,5 +41,8 @@
     #define IMU FakeIMU
 #endif
 
+#ifdef USE_QMI8658_IMU
+    #define IMU QMI8658IMU
 #endif
 
+#endif
