@@ -337,6 +337,9 @@ void publishData()
 {
     odom_msg = odometry.getData();
     imu_msg = imu.getData();
+#ifdef USE_FAKE_IMU
+    imu_msg.angular_velocity.z = odom_msg.twist.twist.angular.z;
+#endif
     mag_msg = mag.getData();
 #ifdef MAG_BIAS
     const float mag_bias[3] = MAG_BIAS;
