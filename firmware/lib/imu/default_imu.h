@@ -24,8 +24,8 @@
 #include "ITG3200.h"
 #include "HMC5883L.h"
 #include "MPU6050.h"
-#include "MPU9150.h"
 #include "MPU9250.h"
+#include "QMI8658.h"
 
 class GY85IMU: public IMUInterface 
 {
@@ -106,8 +106,7 @@ class MPU6050IMU: public IMUInterface
         const float accel_scale_ = 1 / 16384.0;
         const float gyro_scale_ = 1 / 131.0;
 
-        MPU6050 accelerometer_;
-        MPU6050 gyroscope_;
+        MPU6050 accelgyro_;
 
         geometry_msgs__msg__Vector3 accel_;
         geometry_msgs__msg__Vector3 gyro_;
@@ -121,16 +120,13 @@ class MPU6050IMU: public IMUInterface
         {
             Wire.begin();
             bool ret;
-            accelerometer_.initialize();
-            ret = accelerometer_.testConnection();
+            accelgyro_.initialize();
+            ret = accelgyro_.testConnection();
             if(!ret)
                 return false;
 
-            gyroscope_.initialize();
-            ret = gyroscope_.testConnection();
-            if(!ret)
-                return false;
-
+            accelgyro_.CalibrateAccel();
+            accelgyro_.CalibrateGyro();
             return true;
         }
 
@@ -138,7 +134,7 @@ class MPU6050IMU: public IMUInterface
         {
             int16_t ax, ay, az;
             
-            accelerometer_.getAcceleration(&ax, &ay, &az);
+            accelgyro_.getAcceleration(&ax, &ay, &az);
 
             accel_.x = ax * (double) accel_scale_ * g_to_accel_;
             accel_.y = ay * (double) accel_scale_ * g_to_accel_;
@@ -151,68 +147,7 @@ class MPU6050IMU: public IMUInterface
         {
             int16_t gx, gy, gz;
 
-            gyroscope_.getRotation(&gx, &gy, &gz);
-
-            gyro_.x = gx * (double) gyro_scale_ * DEG_TO_RAD;
-            gyro_.y = gy * (double) gyro_scale_ * DEG_TO_RAD;
-            gyro_.z = gz * (double) gyro_scale_ * DEG_TO_RAD;
-
-            return gyro_;
-        }
-};
-
-class MPU9150IMU: public IMUInterface 
-{
-    private:
-        const float accel_scale_ = 1 / 16384.0;
-        const float gyro_scale_ = 1 / 131.0;
-
-        MPU9150 accelerometer_;
-        MPU9150 gyroscope_;
-
-        geometry_msgs__msg__Vector3 accel_;
-        geometry_msgs__msg__Vector3 gyro_;
-
-    public:
-        MPU9150IMU()
-        {
-        }
-
-        bool startSensor() override
-        {
-            Wire.begin();
-            bool ret;
-            accelerometer_.initialize();
-            ret = accelerometer_.testConnection();
-            if(!ret)
-                return false;
-
-            gyroscope_.initialize();
-            ret = gyroscope_.testConnection();
-            if(!ret)
-                return false;
-
-            return true;
-        }
-
-        geometry_msgs__msg__Vector3 readAccelerometer() override
-        {
-            int16_t ax, ay, az;
-            
-            accelerometer_.getAcceleration(&ax, &ay, &az);
-
-            accel_.x = ax * (double) accel_scale_ * g_to_accel_;
-            accel_.y = ay * (double) accel_scale_ * g_to_accel_;
-            accel_.z = az * (double) accel_scale_ * g_to_accel_;
-
-            return accel_;
-        }
-
-        geometry_msgs__msg__Vector3 readGyroscope() override
-        {
-            int16_t gx, gy, gz;
-
-            gyroscope_.getRotation(&gx, &gy, &gz);
+            accelgyro_.getRotation(&gx, &gy, &gz);
 
             gyro_.x = gx * (double) gyro_scale_ * DEG_TO_RAD;
             gyro_.y = gy * (double) gyro_scale_ * DEG_TO_RAD;
@@ -228,8 +163,7 @@ class MPU9250IMU: public IMUInterface
         const float accel_scale_ = 1 / 16384.0;
         const float gyro_scale_ = 1 / 131.0;
 
-        MPU9250 accelerometer_;
-        MPU9250 gyroscope_;
+        MPU9250 accelgyro_;
 
         geometry_msgs__msg__Vector3 accel_;
         geometry_msgs__msg__Vector3 gyro_;
@@ -243,13 +177,8 @@ class MPU9250IMU: public IMUInterface
         {
             Wire.begin();
             bool ret;
-            accelerometer_.initialize();
-            ret = accelerometer_.testConnection();
-            if(!ret)
-                return false;
-
-            gyroscope_.initialize();
-            ret = gyroscope_.testConnection();
+            accelgyro_.initialize();
+            ret = accelgyro_.testConnection();
             if(!ret)
                 return false;
 
@@ -260,7 +189,7 @@ class MPU9250IMU: public IMUInterface
         {
             int16_t ax, ay, az;
             
-            accelerometer_.getAcceleration(&ax, &ay, &az);
+            accelgyro_.getAcceleration(&ax, &ay, &az);
 
             accel_.x = ax * (double) accel_scale_ * g_to_accel_;
             accel_.y = ay * (double) accel_scale_ * g_to_accel_;
@@ -273,7 +202,7 @@ class MPU9250IMU: public IMUInterface
         {
             int16_t gx, gy, gz;
 
-            gyroscope_.getRotation(&gx, &gy, &gz);
+            accelgyro_.getRotation(&gx, &gy, &gz);
 
             gyro_.x = gx * (double) gyro_scale_ * DEG_TO_RAD;
             gyro_.y = gy * (double) gyro_scale_ * DEG_TO_RAD;
@@ -306,6 +235,50 @@ class FakeIMU: public IMUInterface
 
         geometry_msgs__msg__Vector3 readGyroscope() override
         {
+            return gyro_;
+        }
+};
+
+class QMI8658IMU: public IMUInterface 
+{
+    private:
+        QMI8658 qmi8658_;
+
+        geometry_msgs__msg__Vector3 accel_;
+        geometry_msgs__msg__Vector3 gyro_;
+
+    public:
+        QMI8658IMU()
+        {
+        }
+
+        bool startSensor() override
+        {
+            Wire.begin();
+	    if (qmi8658_.begin() == 0){
+	        // Serial.println("qmi8658_init fail");
+	        return false;
+	    }
+	    return true;
+        }
+
+        geometry_msgs__msg__Vector3 readAccelerometer() override
+        {
+	    float ac[3];
+            qmi8658_.read_acc(ac);
+            accel_.x = ac[0];
+            accel_.y = ac[1];
+            accel_.z = ac[2];
+            return accel_;
+        }
+
+        geometry_msgs__msg__Vector3 readGyroscope() override
+        {
+	    float gy[3];
+            qmi8658_.read_gyro(gy);
+            gyro_.x = gy[0];
+            gyro_.y = gy[1];
+            gyro_.z = gy[2];
             return gyro_;
         }
 };

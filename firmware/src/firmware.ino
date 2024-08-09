@@ -22,6 +22,7 @@
 
 #include <nav_msgs/msg/odometry.h>
 #include <sensor_msgs/msg/imu.h>
+#include <sensor_msgs/msg/magnetic_field.h>
 #include <geometry_msgs/msg/twist.h>
 #include <geometry_msgs/msg/vector3.h>
 
@@ -31,6 +32,7 @@
 #include "pid.h"
 #include "odometry.h"
 #include "imu.h"
+#include "mag.h"
 #define ENCODER_USE_INTERRUPTS
 #define ENCODER_OPTIMIZE_INTERRUPTS
 #include "encoder.h"
@@ -47,10 +49,12 @@
 
 rcl_publisher_t odom_publisher;
 rcl_publisher_t imu_publisher;
+rcl_publisher_t mag_publisher;
 rcl_subscription_t twist_subscriber;
 
 nav_msgs__msg__Odometry odom_msg;
 sensor_msgs__msg__Imu imu_msg;
+sensor_msgs__msg__MagneticField mag_msg;
 geometry_msgs__msg__Twist twist_msg;
 
 rclc_executor_t executor;
@@ -98,6 +102,7 @@ Kinematics kinematics(
 
 Odometry odometry;
 IMU imu;
+MAG mag;
 
 #ifndef BAUDRATE
 #define BAUDRATE 115200
@@ -119,6 +124,7 @@ void setup()
             flashLED(3);
         }
     }
+    mag.init();
 
 #ifdef MICRO_ROS_TRANSPORT_ARDUINO_WIFI
     set_microros_wifi_transports(WIFI_SSID, WIFI_PASSWORD, AGENT_IP, AGENT_PORT);
@@ -198,8 +204,20 @@ bool createEntities()
         &imu_publisher, 
         &node,
         ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
+#ifndef USE_FAKE_MAG
+        "imu/data_raw"
+#else
         "imu/data"
+#endif
     ));
+#ifndef USE_FAKE_MAG
+    RCCHECK(rclc_publisher_init_default(
+        &mag_publisher,
+        &node,
+        ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, MagneticField),
+        "imu/mag"
+    ));
+#endif
     // create twist command subscriber
     RCCHECK(rclc_subscription_init_default( 
         &twist_subscriber, 
@@ -240,6 +258,9 @@ bool destroyEntities()
 
     rcl_publisher_fini(&odom_publisher, &node);
     rcl_publisher_fini(&imu_publisher, &node);
+#ifndef USE_FAKE_MAG
+    rcl_publisher_fini(&mag_publisher, &node);
+#endif
     rcl_subscription_fini(&twist_subscriber, &node);
     rcl_node_fini(&node);
     rcl_timer_fini(&control_timer);
@@ -316,6 +337,16 @@ void publishData()
 {
     odom_msg = odometry.getData();
     imu_msg = imu.getData();
+#ifdef USE_FAKE_IMU
+    imu_msg.angular_velocity.z = odom_msg.twist.twist.angular.z;
+#endif
+    mag_msg = mag.getData();
+#ifdef MAG_BIAS
+    const float mag_bias[3] = MAG_BIAS;
+    mag_msg.magnetic_field.x -= mag_bias[0];
+    mag_msg.magnetic_field.y -= mag_bias[1];
+    mag_msg.magnetic_field.z -= mag_bias[2];
+#endif
 
     struct timespec time_stamp = getTime();
 
@@ -325,7 +356,13 @@ void publishData()
     imu_msg.header.stamp.sec = time_stamp.tv_sec;
     imu_msg.header.stamp.nanosec = time_stamp.tv_nsec;
 
+    mag_msg.header.stamp.sec = time_stamp.tv_sec;
+    mag_msg.header.stamp.nanosec = time_stamp.tv_nsec;
+
     RCSOFTCHECK(rcl_publish(&imu_publisher, &imu_msg, NULL));
+#ifndef USE_FAKE_MAG
+    RCSOFTCHECK(rcl_publish(&mag_publisher, &mag_msg, NULL));
+#endif
     RCSOFTCHECK(rcl_publish(&odom_publisher, &odom_msg, NULL));
 }
 

@@ -83,6 +83,15 @@ Supported IMUs:
 - **MPU6050**
 - **MPU9150**
 - **MPU9250**
+- **QMI8658**
+
+Supported MAGs:
+
+- **HMC5883L**
+- **AK8963**
+- **AK8975**
+- **AK09918**
+- **QMC5883L**
 
 ### 4. Connection Diagram
 Below are connection diagrams you can follow for each supported motor driver and IMU. For simplicity, only one motor connection is provided but the same diagram can be used to connect the rest of the motors. You are free to decide which microcontroller pin to use just ensure that the following are met:
@@ -162,6 +171,38 @@ Constants' Meaning:
 - **USE_MPU9150_IMU** - MPU9150 IMUs.
 
 - **USE_MPU9250_IMU** - MPU9250 IMUs.
+
+- **USE_QMI8658_IMU** - QMI8658 IMUs.
+
+- **USE_HMC5883L_MAG** - HMC5883L MAGs.
+
+- **USE_AK8963_MAG** - AK8963 MAGs.
+
+- **USE_AK8975_MAG** - AK8975 MAGs.
+
+- **USE_AK09918_MAG** - AK09918 MAGs.
+
+- **USE_QMC5883L_MAG** - QMC5883L MAGs.
+
+- **MAG_BIAS** - Magnetometer calibration, eg { -352, -382, -10 }.
+
+If you enable magnetometer device, you will need to enable Magdwick filter by adding "madgwick:=true" in robot bringup. The topic from imu will be named as imu/data_raw. The Madgwick filter will fuse imu/data_raw and imu/mag to imu/data.
+
+    ros2 launch linorobot2_bringup bringup.launch.py madgwick:=true
+
+Magnetometer calibration should be taken on board with all hardware installed, inlcuding all connectors, battery and motors. The calibration package will rotate the robot slowly for 60 sec. And compute the hard iron bias. More info [here](https://github.com/mikeferguson/robot_calibration#the-magnetometer_calibration-node).
+
+    sudo apt-get install ros-humble-robot-calibration -y
+    rm -rf /tmp/magnetometer_calibration.bag
+    ros2 run robot_calibration magnetometer_calibration
+    ...
+    mag_bias_x: -7.94713e-06
+    mag_bias_y: 3.49388e-05
+    mag_bias_z: -5.40286e-05
+
+Set the MAG_BIAS to these values in robot configuration file.
+
+    #define MAG_BIAS { -7.94713e-06, 3.49388e-05, -5.40286e-05 }
 
 Next, fill in the robot settings accordingly:
 

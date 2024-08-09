@@ -1,4 +1,5 @@
 // Copyright (c) 2021 Juan Miguel Jimeno
+// Copyright (c) 2023 Thomas Chou
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,37 +13,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef IMU_CONFIG_H
-#define IMU_CONFIG_H
+#ifndef MAG_CONFIG_H
+#define MAG_CONFIG_H
 
-#if defined(USE_MPU9150_IMU) && !defined(USE_MPU6050_IMU)
-#define USE_MPU6050_IMU
-#endif
-
-// include the header of your new driver here similar to default_imu.h
-#include "default_imu.h"
+// include the header of your new driver here similar to default_mag.h
+#include "default_mag.h"
 
 // now you can create a config constant that you can use in lino_base_config.h
-#ifdef USE_GY85_IMU
-    // pass your built in class to IMU macro
-    #define IMU GY85IMU
+#ifdef USE_HMC5883L_MAG
+    // pass your built in class to MAG macro
+    #define MAG HMC5883LMAG
 #endif
 
-#ifdef USE_MPU6050_IMU
-    #define IMU MPU6050IMU
+#ifdef USE_AK8963_MAG
+    #define MAG AK8963MAG
 #endif
 
-#ifdef USE_MPU9250_IMU
-    #define IMU MPU9250IMU
+#ifdef USE_AK8975_MAG
+    #define MAG AK8975MAG
 #endif
 
-#ifndef IMU
-    #define USE_FAKE_IMU
-    #define IMU FakeIMU
+#ifdef USE_AK09918_MAG
+    #define MAG AK09918MAG
 #endif
 
-#ifdef USE_QMI8658_IMU
-    #define IMU QMI8658IMU
+#ifdef USE_QMC5883L_MAG
+    #define MAG QMC5883LMAG
+#endif
+
+#ifndef MAG // use fake mag when there is no real mag
+    #define USE_FAKE_MAG
+    #define MAG FakeMAG
 #endif
 
 #endif
