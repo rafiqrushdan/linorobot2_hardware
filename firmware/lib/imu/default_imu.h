@@ -15,6 +15,10 @@
 #ifndef DEFAULT_IMU
 #define DEFAULT_IMU
 
+// Include this for sensor event handling for adafruit sensor only
+#include <Adafruit_Sensor.h>     
+
+
 //include IMU base interface
 #include "imu_interface.h"
 
@@ -26,6 +30,8 @@
 #include "MPU6050.h"
 #include "MPU9250.h"
 #include "QMI8658.h"
+#include "Adafruit_BNO055.h"
+
 
 class GY85IMU: public IMUInterface 
 {
@@ -281,7 +287,62 @@ class QMI8658IMU: public IMUInterface
             gyro_.z = gy[2];
             return gyro_;
         }
+
+
 };
+
+class BNO055IMU: public IMUInterface 
+{
+    private:
+        Adafruit_BNO055 bno_ = Adafruit_BNO055(55,0x28);  // Check I2C device address and correct line below (by default address is 0x29 or 0x28)
+//                                   id, address
+        geometry_msgs__msg__Vector3 accel_;
+        geometry_msgs__msg__Vector3 gyro_;
+
+    public:
+        BNO055IMU()
+        {
+        }
+
+        bool startSensor() override
+        {
+            // Start the BNO055 sensor and check the connection
+            if (!bno_.begin())
+            {
+                // Sensor initialization failed
+                return false;
+            }
+            bno_.setExtCrystalUse(true);
+            return true;
+        }
+
+        geometry_msgs__msg__Vector3 readAccelerometer() override
+        {
+            // Read the accelerometer data
+            sensors_event_t event;
+            bno_.getEvent(&event, Adafruit_BNO055::VECTOR_ACCELEROMETER);
+            
+            accel_.x = event.acceleration.x;
+            accel_.y = event.acceleration.y;
+            accel_.z = event.acceleration.z;
+
+            return accel_;
+        }
+
+        geometry_msgs__msg__Vector3 readGyroscope() override
+        {
+            // Read the gyroscope data
+            sensors_event_t event;
+            bno_.getEvent(&event, Adafruit_BNO055::VECTOR_GYROSCOPE);
+            
+            gyro_.x = event.gyro.x;
+            gyro_.y = event.gyro.y;
+            gyro_.z = event.gyro.z;
+
+            return gyro_;
+        }
+};
+
 
 #endif
 //ADXL345 https://www.sparkfun.com/datasheets/Sensors/Accelerometer/ADXL345.pdf
@@ -295,3 +356,5 @@ class QMI8658IMU: public IMUInterface
 
 //http://www.sureshjoshi.com/embedded/invensense-imus-what-to-know/
 //https://stackoverflow.com/questions/19161872/meaning-of-lsb-unit-and-unit-lsb
+//https://learn.adafruit.com/adafruit-bno055-absolute-orientation-sensor/overview
+
