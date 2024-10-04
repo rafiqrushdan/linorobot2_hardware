@@ -37,7 +37,7 @@
 #endif
 
 #ifdef USE_BNO055_IMU
-    #define IMU BNO055
+    #define IMU BNO055IMU
 #endif
 
 #ifndef IMU
