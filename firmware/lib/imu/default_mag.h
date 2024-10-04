@@ -26,6 +26,11 @@
 #include "AK8975.h"
 #include "AK09918.h"
 #include "QMC5883L.h"
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BNO055.h>
+
+// BNO055 requires this calibration profile for optimal results
+#define BNO055_SAMPLERATE_DELAY_MS (100)
 
 class HMC5883LMAG: public MAGInterface
 {
@@ -272,6 +277,88 @@ class FakeMAG: public MAGInterface
         geometry_msgs__msg__Vector3 readMagnetometer() override
         {
             return mag_;
+        }
+};
+
+class BNO055MAG: public MAGInterface
+{
+    private:
+        // BNO055 object from Adafruit library
+        Adafruit_BNO055 bno_ = Adafruit_BNO055(55);
+
+        // returned vector for sensor reading
+        geometry_msgs__msg__Vector3 mag_;
+        
+        // status check flag
+        bool initialized_;
+
+    public:
+        BNO055MAG()
+        {
+            initialized_ = false;
+        }
+
+        bool startSensor() override
+        {
+            // Initialize BNO055 sensor
+            if (!bno_.begin())
+            {
+                // If initialization fails, return false
+                return false;
+            }
+
+            // Wait for the sensor to fully initialize
+            delay(BNO055_SAMPLERATE_DELAY_MS);
+            
+            // Sensor calibration might be necessary for accuracy
+            bno_.setExtCrystalUse(true);
+            initialized_ = true;
+
+            return true;
+        }
+
+        geometry_msgs__msg__Vector3 readMagnetometer() override
+        {
+            if (!initialized_)
+            {
+                // Return zero if the sensor hasn't been initialized
+                mag_.x = mag_.y = mag_.z = 0;
+                return mag_;
+            }
+
+            // Get magnetometer reading in microteslas (uT)
+            sensors_event_t event;
+            bno_.getEvent(&event, Adafruit_BNO055::VECTOR_MAGNETOMETER);
+
+            // Assign the readings to the Vector3 object (converting from uT to Gauss for consistency)
+            mag_.x = event.magnetic.x * 0.01; // 1 uT = 0.01 Gauss
+            mag_.y = event.magnetic.y * 0.01;
+            mag_.z = event.magnetic.z * 0.01;
+
+            return mag_;
+        }
+
+        // Optionally, add a method to get orientation data (Euler angles or quaternions)
+        geometry_msgs__msg__Vector3 getOrientation()
+        {
+            geometry_msgs__msg__Vector3 orientation;
+
+            if (!initialized_)
+            {
+                orientation.x = orientation.y = orientation.z = 0;
+                return orientation;
+            }
+
+            // Get orientation data from the sensor (Euler angles: pitch, roll, yaw)
+            sensors_event_t event;
+            bno_.getEvent(&event, Adafruit_BNO055::VECTOR_EULER);
+
+            // Assign Euler angles in degrees
+            orientation.x = event.orientation.x; // Pitch
+            orientation.y = event.orientation.y; // Roll
+            orientation.z = event.orientation.z; // Yaw
+
+            return orientation;
         }
 };
 #endif
