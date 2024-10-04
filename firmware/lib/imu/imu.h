@@ -36,6 +36,10 @@
     #define IMU MPU9250IMU
 #endif
 
+#ifdef USE_BNO055_IMU
+    #define IMU BNO055
+#endif
+
 #ifndef IMU
     #define USE_FAKE_IMU
     #define IMU FakeIMU
