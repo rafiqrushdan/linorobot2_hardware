@@ -30,6 +30,7 @@
 
 //uncomment the IMU you're using
 #define USE_GY85_IMU
+// #define USE_BNO055
 // #define USE_MPU6050_IMU
 // #define USE_MPU9150_IMU
 // #define USE_MPU9250_IMU
@@ -39,7 +40,6 @@
 // #define USE_AK8975_MAG
 // #define USE_AK09918_MAG
 // #define USE_QMC5883L_MAG
-// #define USE_BNO055_MAG
 // #define MAG_BIAS { 0, 0, 0 }
 
 
