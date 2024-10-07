@@ -284,7 +284,7 @@ class BNO055MAG: public MAGInterface
 {
     private:
         // BNO055 object from Adafruit library
-        Adafruit_BNO055 bno_ = Adafruit_BNO055(55);
+        Adafruit_BNO055 bno_ = Adafruit_BNO055(55,0x28);
 
         // returned vector for sensor reading
         geometry_msgs__msg__Vector3 mag_;
